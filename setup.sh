@@ -34,7 +34,7 @@ fi
 echo
 echo "==> Done."
 echo "    Add an alias (once) so you can just run it anytime:"
-echo "      echo 'alias trz01=\"~/trz01/trz01\"' >> ~/.zshrc && source ~/.zshrc"
+echo "      echo 'alias trz01=\"$PWD/trz01\"' >> ~/.zshrc && source ~/.zshrc"
 echo
 echo "    Run  trz01  — it opens a menu:"
 echo "      option 1: set credentials (asks once, saves token)"
