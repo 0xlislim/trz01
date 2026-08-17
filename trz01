@@ -54,6 +54,8 @@ while true; do
   - Option 9 checks .env, config.json, Chromium, API token and shows reservations.
   - Option 10 toggles wait-for-seat per slot: when your time is full, it keeps
     checking that time until a seat frees up (up to the minutes you set), then books.
+    It also asks if you want to cancel an existing backup reservation and rebook
+    the desired time when it frees (rebook-from-backup).
   - test_slot in config.json books immediately on start (for testing).
   - Booking popup auto-closes on success, after 5 failed captcha tries, or after the task timeout.
 

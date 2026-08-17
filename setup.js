@@ -55,6 +55,7 @@ async function setSlot() {
     to,
     waitForSeat: prev?.waitForSeat ?? false,
     waitForSeatTimeout: prev?.waitForSeatTimeout ?? 60,
+    rebookBackup: prev?.rebookBackup ?? false,
   });
   await writeFile(cfgPath, JSON.stringify(config, null, 2) + "\n");
   console.log(`Saved ${mode} slot: ${from} -> ${to} at ${busTime} (books at ${launch}).`);
@@ -79,11 +80,16 @@ async function toggleWaitSeat() {
     );
     const cap = Number(capRaw.trim());
     slot.waitForSeatTimeout = Number.isFinite(cap) && cap > 0 ? cap : slot.waitForSeatTimeout ?? 60;
+    const rebookRaw = await prompt(
+      "If you already hold a backup reservation, cancel it and rebook the desired time when it frees? (y/N): "
+    );
+    slot.rebookBackup = rebookRaw.trim().toLowerCase() === "y";
   }
   await writeFile(cfgPath, JSON.stringify(config, null, 2) + "\n");
   console.log(
     `${slot.type} slot: wait-for-seat ${on ? "ON" : "OFF"}` +
-      (on ? ` (up to ${slot.waitForSeatTimeout} min)` : "")
+      (on ? ` (up to ${slot.waitForSeatTimeout} min)` : "") +
+      (slot.rebookBackup ? ", rebook-from-backup ON" : "")
   );
 }
 
@@ -120,8 +126,11 @@ async function checkConfig() {
         fail(`${name}: traject '${s.traject}' not HH:MM`);
       if (!s.from || !s.to) fail(`${name}: from/to missing`);
       else pass(`${name}: ${s.from} -> ${s.to} at ${s.traject} (release ${s.run_at.slice(0, 5)})`);
-      if (s.waitForSeat)
+      if (s.waitForSeat) {
         pass(`${name}: wait-for-seat ON (up to ${s.waitForSeatTimeout ?? 60} min)`);
+        if (s.rebookBackup)
+          pass(`${name}: rebook-from-backup ON (cancels backup when desired frees)`);
+      }
     });
   } else {
     pass("no slots configured");

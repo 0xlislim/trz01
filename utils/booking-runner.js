@@ -2,6 +2,11 @@ import puppeteer from "puppeteer";
 import { CaptchaSolver, CaptchaError } from "../reCaptchaSovler/solver.js";
 import { intoUTC } from "./time.js";
 import { Signal } from "./signal.js";
+import {
+  listReservations,
+  cancelReservation,
+  formatReservation,
+} from "./reservations.js";
 import { writeFile, rm } from "node:fs/promises";
 
 const BROWSER_PID_FILE = "/tmp/trz01-browser.pid";
@@ -129,6 +134,7 @@ async function runTask(slot, token, chromiumBinary) {
   const { traject, from, to } = slot;
   const waitForSeat = slot.waitForSeat === true;
   const waitForSeatTimeout = Number(slot.waitForSeatTimeout || 60);
+  const rebookBackup = slot.rebookBackup === true;
   const browser = await puppeteer.launch({
     headless: false,
     executablePath: chromiumBinary,
@@ -178,11 +184,25 @@ async function runTask(slot, token, chromiumBinary) {
     const flow = (async () => {
       console.log(`Starting polling for ${traject} bus...`);
       const [hour, minute] = traject.split(":");
-      await pollBuses(
+      const targetBus = await pollBuses(
         { ...intoUTC(hour, minute), from, to },
         token,
         { waitForSeat, waitForSeatTimeout }
       );
+
+      if (rebookBackup) {
+        const reservations = await listReservations(token);
+        const backups = reservations.filter(
+          (r) => r.busId !== targetBus.id
+        );
+        for (const backup of backups) {
+          const f = formatReservation(backup);
+          console.log(
+            `Canceling backup reservation ${f.time} ${f.from} -> ${f.to} (seat ${f.seatNo})...`
+          );
+          await cancelReservation(token, backup);
+        }
+      }
 
       const waitForBooking = new Signal();
       page.on("response", (e) => e.url().includes("booking") && waitForBooking.resolve());
