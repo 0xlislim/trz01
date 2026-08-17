@@ -1,0 +1,15 @@
+[Unit]
+Description=trz01 zone01 transport booking
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/trz01
+ExecStart=/usr/bin/node %h/trz01/main.js
+Restart=on-failure
+RestartSec=5
+Environment=DISPLAY=:1
+
+[Install]
+WantedBy=default.target

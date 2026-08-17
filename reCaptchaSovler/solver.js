@@ -2,6 +2,8 @@ import { convertMp3BufferToWav, waveBufferToF64 } from "./audio.js";
 import { pipeline } from "@xenova/transformers";
 import { Signal } from "../utils/signal.js";
 
+export class CaptchaError extends Error {}
+
 const transcriber = await pipeline(
   "automatic-speech-recognition",
   "Xenova/whisper-tiny"
@@ -43,16 +45,35 @@ export class CaptchaSolver {
   }
 
   async solveCaptcha() {
-    const iframe = await this.#page.waitForSelector(
-      'iframe[title="reCAPTCHA"]'
-    );
+    const iframe = await this.#page
+      .waitForSelector('iframe[title="reCAPTCHA"]', { timeout: 15000 })
+      .catch(() => {
+        throw new CaptchaError("reCAPTCHA iframe never appeared");
+      });
     const frame = await iframe.contentFrame();
     await frame.waitForSelector("#rc-anchor-container");
-    await frame.locator("#rc-anchor-container").click();
 
-    const challenge_iframe = await this.#page.waitForSelector(
-      'iframe[title="recaptcha challenge expires in two minutes"]'
-    );
+    const alreadyChecked = await frame
+      .$(".recaptcha-checkbox-checked")
+      .catch(() => null);
+    if (!alreadyChecked) {
+      await frame.locator("#rc-anchor-container").click();
+    }
+
+    const needsAudio = await this.#waitForChallenge(frame);
+    if (!needsAudio) {
+      console.log("No audio challenge — checkbox checked, proceeding to Confirm.");
+      return;
+    }
+
+    const challenge_iframe = await this.#page
+      .waitForSelector(
+        'iframe[title="recaptcha challenge expires in two minutes"]',
+        { timeout: 10000 }
+      )
+      .catch(() => {
+        throw new CaptchaError("captcha challenge iframe never appeared");
+      });
 
     const challenge_frame = await challenge_iframe.contentFrame();
     await challenge_frame.waitForSelector(".audio-button-holder");
@@ -62,7 +83,16 @@ export class CaptchaSolver {
       .waitForSelector(".recaptcha-checkbox-checked", { timeout: 60000 })
       .then(() => this.#answer.reject());
 
+    let attempts = 0;
+    const MAX_ATTEMPTS = 5;
+
     while (true) {
+      attempts++;
+      if (attempts > MAX_ATTEMPTS) {
+        throw new CaptchaError(
+          `captcha solving failed after ${MAX_ATTEMPTS} attempts (automation detected?)`
+        );
+      }
       try {
         const text = await this.#answer.promise;
         this.#answer.reset();
@@ -78,5 +108,30 @@ export class CaptchaSolver {
         break;
       }
     }
+  }
+
+  async #waitForChallenge(frame) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (!settled) {
+          settled = true;
+          resolve(value);
+        }
+      };
+
+      this.#page
+        .waitForSelector(
+          'iframe[title="recaptcha challenge expires in two minutes"]',
+          { timeout: 8000 }
+        )
+        .then(() => finish(true))
+        .catch(() => finish(false));
+
+      frame
+        .waitForSelector(".recaptcha-checkbox-checked", { timeout: 8000 })
+        .then(() => finish(false))
+        .catch(() => finish(false));
+    });
   } 
 }

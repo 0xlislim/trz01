@@ -1,16 +1,24 @@
 {
-  "chormiumBinary": "/usr/bin/google-chrome",
-  "#chormiumBinary": "/usr/bin/chromium-browser",
+  "chromiumBinary": "/usr/bin/google-chrome",
+  "#chromiumBinary": "/usr/bin/chromium-browser",
   "slots": [
     {
-      "run_at": "12:23:00",
-      "traject": "17:30",
-      "destination": "Bab El Gharbi"
+      "type": "morning",
+      "run_at": "16:00:00",
+      "traject": "09:00",
+      "from": "Doha",
+      "to": "Campus",
+      "waitForSeat": false,
+      "waitForSeatTimeout": 60
     },
     {
-      "run_at": "15:59:50",
-      "traject": "10:20",
-      "destination": "Campus"
+      "type": "evening",
+      "run_at": "12:00:00",
+      "traject": "17:30",
+      "from": "Campus",
+      "to": "Bab El Gharbi",
+      "waitForSeat": false,
+      "waitForSeatTimeout": 60
     }
   ],
   "test_slot": ""

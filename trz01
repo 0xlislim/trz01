@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+
+while true; do
+  echo
+  echo "=== trz01 ==="
+  echo "1) Set credentials (username/password)"
+  echo "2) Morning slot  (time, from, to)"
+  echo "3) Evening slot  (time, from, to)"
+  echo "4) Show current config"
+  echo "5) Run booking scheduler"
+  echo "6) Stop booking browser (kills saved PID)"
+  echo "7) Rebook (cancel a time -> book a new time)"
+  echo "8) My reservations / cancel"
+  echo "9) Check config"
+  echo "10) Wait-for-seat on/off (keep checking a full time)"
+  echo "h) Help"
+  echo "q) Quit"
+  printf "Choice: "
+  read -r choice
+  case "$choice" in
+    1) node setup.js credentials ;;
+    2) node setup.js morning ;;
+    3) node setup.js evening ;;
+    4) cat config.json ;;
+    5) exec node main.js ;;
+    6) ./kill-booking.sh ;;
+    7) node rebook.js ;;
+    8) node setup.js reservations ;;
+    9) node setup.js check ;;
+    10) node setup.js waitseat ;;
+    h|H|help) cat <<'EOF'
+
+  Each option asks a few questions, example:
+
+  $ trz01
+  Choice: 3                      <-- evening slot
+  evening bus time (HH:MM): 17:30
+  evening departure: Campus
+  evening destination: Bab El Gharbi
+  Booking opens at (HH:MM) [12:00]:   <-- Enter keeps default
+
+  Saved evening slot: Campus -> Bab El Gharbi at 17:30 (books at 12:00).
+
+  - Option 1 saves your login once; the session token goes to .env.
+  - Options 2/3 configure one slot each (re-running replaces that slot).
+  - Release times: evening = 12:00, morning = 16:00 (defaults).
+  - Option 5 starts the scheduler and keeps running to book at those times.
+  - Option 6 kills just the booking Chrome popup (PID + unique profile marker; never touches other Chrome).
+  - Option 7 rebooks: prompts once for OLD->NEW (e.g. 18:15->09:00), cancels the old
+    reservation via API, then books the new time (config defaults untouched).
+  - Option 8 lists your reservations and can cancel one (via API, no browser).
+  - Option 9 checks .env, config.json, Chromium, API token and shows reservations.
+  - Option 10 toggles wait-for-seat per slot: when your time is full, it keeps
+    checking that time until a seat frees up (up to the minutes you set), then books.
+  - test_slot in config.json books immediately on start (for testing).
+  - Booking popup auto-closes on success, after 5 failed captcha tries, or after the task timeout.
+
+EOF
+      ;;
+    q|Q) exit 0 ;;
+    *) echo "Invalid choice." ;;
+  esac
+done
